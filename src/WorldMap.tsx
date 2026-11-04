@@ -244,7 +244,7 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
                 {/* Shadow disc */}
                 <ellipse cx="0" cy="22" rx="22" ry="6" fill="#000" opacity="0.25" />
 
-                {/* Floating node body */}
+                <g className="zone-node-body">
                 <g className="animate-floatY" style={{ animationDelay: `${(zone.x % 5) * 0.3}s` }}>
                   <circle
                     r="26"
@@ -270,6 +270,7 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
                       </foreignObject>
                     </g>
                   )}
+                </g>
                 </g>
 
                 {/* Label */}

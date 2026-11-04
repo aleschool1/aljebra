@@ -56,12 +56,16 @@ body {
 
 .zone-node {
   cursor: pointer;
+}
+.zone-node-body {
+  transform-box: fill-box;
+  transform-origin: center;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.zone-node:hover {
-  transform: translateY(-4px);
+.zone-node:hover .zone-node-body {
+  transform: translateY(-4px) scale(1.06);
 }
-.zone-node:active {
+.zone-node:active .zone-node-body {
   transform: translateY(-1px) scale(0.97);
 }
 
