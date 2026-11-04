@@ -56,12 +56,13 @@ body {
 
 .zone-node {
   cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.zone-node:hover .zone-node-body {
-  filter: url(#glow) brightness(1.08);
+.zone-node:hover {
+  transform: translateY(-4px);
 }
-.zone-node:active .zone-node-body {
-  opacity: 0.92;
+.zone-node:active {
+  transform: translateY(-1px) scale(0.97);
 }
 
 .cloud {

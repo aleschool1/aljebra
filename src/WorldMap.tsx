@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Check, Lock, Plus, Minus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Check, Lock } from 'lucide-react';
 import { ZONES, PATHS, type Zone } from '@/zones';
 
 interface Props {
@@ -11,7 +11,6 @@ interface Props {
 
 const VB_W = 1200;
 const VB_H = 700;
-const MAX_ZOOM = 4; // max zoom-in factor from the "fit" view
 
 /** Decorative mountain ranges as polygons. */
 const MOUNTAINS = [
@@ -71,247 +70,37 @@ function pathD(a: Zone, b: Zone): string {
   return `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
 }
 
-/** viewBox state — a window into the 1200×700 map coordinate space. */
-interface ViewBox {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-const FULL_VB: ViewBox = { x: 0, y: 0, w: VB_W, h: VB_H };
-
-/** Compute the viewBox that fits the container, filling it entirely with the map. */
-function computeFitVB(cw: number, ch: number): ViewBox {
-  const aspect = cw / ch;
-  const mapAspect = VB_W / VB_H;
-  let w: number, h: number;
-  if (aspect > mapAspect) {
-    w = VB_W;
-    h = VB_W / aspect;
-  } else {
-    h = VB_H;
-    w = VB_H * aspect;
-  }
-  return { x: (VB_W - w) / 2, y: (VB_H - h) / 2, w, h };
-}
-
-/** Clamp the viewBox so it stays within the map bounds and zoom limits. */
-function clampVB(vb: ViewBox, fitW: number): ViewBox {
-  const aspect = vb.h / vb.w;
-  let w = Math.max(fitW / MAX_ZOOM, Math.min(VB_W, vb.w));
-  let h = w * aspect;
-  // if h exceeds map height, scale down to fit
-  if (h > VB_H) {
-    h = VB_H;
-    w = h / aspect;
-  }
-  let x = vb.x;
-  let y = vb.y;
-  if (w >= VB_W) x = (VB_W - w) / 2;
-  else x = Math.max(0, Math.min(VB_W - w, x));
-  if (h >= VB_H) y = (VB_H - h) / 2;
-  else y = Math.max(0, Math.min(VB_H - h, y));
-  return { x, y, w, h };
-}
-
-interface PointerInfo {
-  id: number;
-  x: number;
-  y: number;
-}
-
 export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Props) {
   const [hover, setHover] = useState<string | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox>(FULL_VB);
-  const [isPanning, setIsPanning] = useState(false);
 
   const solvedSet = useMemo(() => new Set(solvedIds), [solvedIds]);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  // Track the "fit" width so clampVB knows the zoom-out limit.
-  const fitWRef = useRef(VB_W);
-
-  // Measure container on mount + resize, set initial viewBox.
-  useLayoutEffect(() => {
-    const measure = () => {
-      const c = containerRef.current;
-      if (!c) return;
-      const rect = c.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      const fit = computeFitVB(rect.width, rect.height);
-      fitWRef.current = fit.w;
-      setViewBox(fit);
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    window.addEventListener('orientationchange', () => setTimeout(measure, 200));
-    return () => {
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-
-  // Keep latest viewBox in a ref for gesture handlers
-  const vbRef = useRef(viewBox);
-  vbRef.current = viewBox;
-
-  // Gesture state
-  const pointers = useRef<Map<number, PointerInfo>>(new Map());
-  const pinchStart = useRef<{ dist: number; vb: ViewBox; cx: number; cy: number } | null>(null);
-  const panStart = useRef<{ x: number; y: number; vb: ViewBox } | null>(null);
-
-  /** Zoom by a factor around a screen point (relative to container). */
-  const zoomAround = useCallback(
-    (factor: number, px: number, py: number, current: ViewBox): ViewBox => {
-      const c = containerRef.current;
-      if (!c) return current;
-      const rect = c.getBoundingClientRect();
-      // Convert screen point to map coordinates
-      const mapX = current.x + (px / rect.width) * current.w;
-      const mapY = current.y + (py / rect.height) * current.h;
-      const newW = current.w / factor;
-      const newH = current.h / factor;
-      const newX = mapX - (px / rect.width) * newW;
-      const newY = mapY - (py / rect.height) * newH;
-      return clampVB({ x: newX, y: newY, w: newW, h: newH }, fitWRef.current);
-    },
-    [],
-  );
-
-  // Wheel zoom (desktop) — attached as non-passive via useEffect
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const c = containerRef.current;
-      if (!c) return;
-      const rect = c.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      const delta = -e.deltaY * 0.0015;
-      setViewBox((vb) => zoomAround(1 + delta, px, py, vb));
-    };
-    svg.addEventListener('wheel', onWheel, { passive: false });
-    return () => svg.removeEventListener('wheel', onWheel);
-  }, [zoomAround]);
-
-  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
-
-    if (pointers.current.size === 2) {
-      // Start pinch
-      const pts = [...pointers.current.values()];
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const c = containerRef.current;
-      const rect = c!.getBoundingClientRect();
-      pinchStart.current = {
-        dist,
-        vb: vbRef.current,
-        cx: (pts[0].x + pts[1].x) / 2 - rect.left,
-        cy: (pts[0].y + pts[1].y) / 2 - rect.top,
-      };
-      panStart.current = null;
-      setIsPanning(false);
-    } else if (pointers.current.size === 1) {
-      panStart.current = { x: e.clientX, y: e.clientY, vb: vbRef.current };
-      setIsPanning(false);
-    }
-  };
-
-  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!pointers.current.has(e.pointerId)) return;
-    pointers.current.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
-    const c = containerRef.current;
-    if (!c) return;
-    const rect = c.getBoundingClientRect();
-
-    if (pointers.current.size === 2 && pinchStart.current) {
-      const ps = pinchStart.current;
-      const pts = [...pointers.current.values()];
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const factor = dist / ps.dist;
-      setViewBox(zoomAround(factor, ps.cx, ps.cy, ps.vb));
-    } else if (pointers.current.size === 1 && panStart.current) {
-      const ps = panStart.current;
-      const dxPx = e.clientX - ps.x;
-      const dyPx = e.clientY - ps.y;
-      if (Math.abs(dxPx) > 3 || Math.abs(dyPx) > 3) setIsPanning(true);
-      // Convert pixel delta to viewBox units
-      const dxVB = (dxPx / rect.width) * ps.vb.w;
-      const dyVB = (dyPx / rect.height) * ps.vb.h;
-      setViewBox(
-        clampVB(
-          { x: ps.vb.x - dxVB, y: ps.vb.y - dyVB, w: ps.vb.w, h: ps.vb.h },
-          fitWRef.current,
-        ),
-      );
-    }
-  };
-
-  const endPointer = (e: React.PointerEvent<SVGSVGElement>) => {
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size < 2) pinchStart.current = null;
-    if (pointers.current.size === 0) {
-      panStart.current = null;
-      setIsPanning(false);
-    } else if (pointers.current.size === 1) {
-      const pt = [...pointers.current.values()][0];
-      panStart.current = { x: pt.x, y: pt.y, vb: vbRef.current };
-    }
-  };
-
-  const zoomBy = (factor: number) => {
-    const c = containerRef.current;
-    if (!c) return;
-    const rect = c.getBoundingClientRect();
-    setViewBox((vb) => zoomAround(factor, rect.width / 2, rect.height / 2, vb));
-  };
-
-  const vbStr = `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`;
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-gradient-to-b from-[#0a1838] via-[#162a5e] to-[#243a73]">
+    <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-[#0a1838] via-[#162a5e] to-[#243a73]">
       {/* Top HUD */}
-      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
           <button
             onClick={onExit}
-            className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10 sm:px-3 sm:py-2 sm:text-sm"
+            className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
           >
-            <Lock className="h-4 w-4" /> <span className="hidden sm:inline">Menú</span>
+            <Lock className="h-4 w-4" /> Menú
           </button>
-          <h1 className="font-display text-xl font-extrabold title-glow sm:text-3xl">
+          <h1 className="font-display text-2xl font-extrabold title-glow sm:text-3xl">
             ÁLJEBRA
           </h1>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-gold-500/30 bg-white/5 px-3 py-1.5 text-xs font-bold text-gold-400 backdrop-blur sm:px-4 sm:py-2 sm:text-sm">
+        <div className="flex items-center gap-2 rounded-full border border-gold-500/30 bg-white/5 px-4 py-2 text-sm font-bold text-gold-400 backdrop-blur">
           {solvedSet.size} / {ZONES.length} zonas
         </div>
       </header>
 
       {/* Map surface */}
-      <div ref={containerRef} className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center">
         <svg
-          ref={svgRef}
-          viewBox={vbStr}
-          className="h-full w-full select-none"
-          preserveAspectRatio="xMidYMid meet"
-          style={{
-            cursor: isPanning ? 'grabbing' : 'grab',
-            touchAction: 'none',
-          }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endPointer}
-          onPointerCancel={endPointer}
+          viewBox={`0 0 ${VB_W} ${VB_H}`}
+          className="h-full w-full max-w-[1400px]"
+          preserveAspectRatio="xMidYMid slice"
         >
           <defs>
             <radialGradient id="ocean" cx="50%" cy="40%" r="75%">
@@ -346,7 +135,7 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
             <polygon key={i} points={m.pts} fill={m.fill} opacity="0.7" />
           ))}
 
-          {/* Main landmass */}
+          {/* Main landmass — an organic blobby island */}
           <path
             d="M 60 300
                C 60 200, 220 160, 360 200
@@ -434,26 +223,36 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
                   }
                 }}
               >
+                {/* Pulsing aura for unsolved zones */}
                 {!solved && (
                   <circle r="30" fill={zone.color} opacity="0.25">
-                    <animate attributeName="r" values="26;40;26" dur="2.4s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.35;0;0.35" dur="2.4s" repeatCount="indefinite" />
+                    <animate
+                      attributeName="r"
+                      values="26;40;26"
+                      dur="2.4s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0.35;0;0.35"
+                      dur="2.4s"
+                      repeatCount="indefinite"
+                    />
                   </circle>
                 )}
 
+                {/* Shadow disc */}
                 <ellipse cx="0" cy="22" rx="22" ry="6" fill="#000" opacity="0.25" />
 
-                <g
-                  className="zone-node-body animate-floatY"
-                  style={{
-                    animationDelay: `${(zone.x % 5) * 0.3}s`,
-                    transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-                    transform: isHover ? 'scale(1.12)' : 'scale(1)',
-                    transformBox: 'fill-box',
-                    transformOrigin: 'center',
-                  }}
-                >
-                  <circle r="26" fill={zone.color} stroke="#fff" strokeWidth={isHover ? 4 : 2.5} filter="url(#glow)" />
+                {/* Floating node body */}
+                <g className="animate-floatY" style={{ animationDelay: `${(zone.x % 5) * 0.3}s` }}>
+                  <circle
+                    r="26"
+                    fill={zone.color}
+                    stroke="#fff"
+                    strokeWidth={isHover ? 4 : 2.5}
+                    filter="url(#glow)"
+                  />
                   <circle r="26" fill="none" stroke="#fff" strokeWidth="1" opacity="0.4" />
                   <foreignObject x="-16" y="-16" width="32" height="32">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32 }}>
@@ -473,6 +272,7 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
                   )}
                 </g>
 
+                {/* Label */}
                 <g transform="translate(0 46)" style={{ pointerEvents: 'none' }}>
                   <rect
                     x="-58"
@@ -484,11 +284,26 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
                     opacity={isHover ? 0.95 : 0.7}
                     style={{ transition: 'opacity 0.2s' }}
                   />
-                  <text x="0" y="4" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700" fontFamily="Baloo 2, sans-serif">
+                  <text
+                    x="0"
+                    y="4"
+                    textAnchor="middle"
+                    fill="#fff"
+                    fontSize="12"
+                    fontWeight="700"
+                    fontFamily="Baloo 2, sans-serif"
+                  >
                     {zone.title}
                   </text>
                   {starN > 0 && (
-                    <text x="0" y="17" textAnchor="middle" fill={zone.color} fontSize="9" fontWeight="700">
+                    <text
+                      x="0"
+                      y="17"
+                      textAnchor="middle"
+                      fill={zone.color}
+                      fontSize="9"
+                      fontWeight="700"
+                    >
                       {'★'.repeat(Math.min(starN, 3))}
                     </text>
                   )}
@@ -499,33 +314,8 @@ export default function WorldMap({ solvedIds, stars, onSelectZone, onExit }: Pro
         </svg>
       </div>
 
-      {/* Zoom controls */}
-      <div className="absolute bottom-20 right-3 z-20 flex flex-col gap-2 sm:bottom-6 sm:right-5">
-        <button
-          onClick={() => zoomBy(1.3)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-sky-950/80 text-white backdrop-blur transition-colors hover:bg-sky-800/80 active:scale-90"
-          aria-label="Acercar"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-        <button
-          onClick={() => zoomBy(1 / 1.3)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-sky-950/80 text-white backdrop-blur transition-colors hover:bg-sky-800/80 active:scale-90"
-          aria-label="Alejar"
-        >
-          <Minus className="h-5 w-5" />
-        </button>
-      </div>
-
-      {/* Mobile hint */}
-      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 px-4 sm:hidden">
-        <div className="rounded-full border border-white/10 bg-sky-950/70 px-4 py-2 text-center text-xs text-sky-100/60 backdrop-blur">
-          Arrastra para explorar · pellizca para acercar
-        </div>
-      </div>
-
-      {/* Desktop hover tagline */}
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 px-4 sm:block">
+      {/* Hover tagline banner */}
+      <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 -translate-x-1/2 px-4">
         {hover ? (
           <div className="animate-popIn rounded-2xl border border-white/15 bg-sky-950/80 px-5 py-3 text-center backdrop-blur">
             <p className="font-display text-base font-bold text-white">

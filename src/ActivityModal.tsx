@@ -42,24 +42,24 @@ export default function ActivityModal({ zone, solved, onSolved, onClose }: Props
 
       {/* Panel */}
       <div
-        className="relative flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-gradient-to-b from-[#13265a] to-[#0c1b40] shadow-2xl animate-popIn sm:rounded-3xl"
+        className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border bg-gradient-to-b from-[#13265a] to-[#0c1b40] shadow-2xl animate-popIn"
         style={{ borderColor: `${accent}66` }}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-3 py-3 sm:px-5 sm:py-4"
+          className="flex items-center justify-between px-5 py-4"
           style={{ background: `linear-gradient(90deg, ${accent}33, transparent)` }}
         >
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-11 sm:w-11 sm:rounded-xl"
+              className="flex h-11 w-11 items-center justify-center rounded-xl"
               style={{ background: accent }}
             >
-              <Icon className="h-5 w-5 text-sky-950 sm:h-6 sm:w-6" />
+              <Icon className="h-6 w-6 text-sky-950" />
             </div>
-            <div className="min-w-0">
-              <h2 className="truncate font-display text-lg font-extrabold text-white sm:text-xl">{zone.title}</h2>
-              <p className="truncate text-xs text-sky-100/60 sm:text-sm">{zone.subtitle}</p>
+            <div>
+              <h2 className="font-display text-xl font-extrabold text-white">{zone.title}</h2>
+              <p className="text-sm text-sky-100/60">{zone.subtitle}</p>
             </div>
           </div>
           <button
@@ -72,7 +72,7 @@ export default function ActivityModal({ zone, solved, onSolved, onClose }: Props
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 px-3 pt-3 sm:px-5">
+        <div className="flex gap-2 px-5 pt-3">
           <TabButton active={tab === 'learn'} onClick={() => setTab('learn')} accent={accent}>
             <BookOpen className="h-4 w-4" /> Aprende
           </TabButton>
@@ -88,7 +88,7 @@ export default function ActivityModal({ zone, solved, onSolved, onClose }: Props
         </div>
 
         {/* Body */}
-        <div className="game-scroll flex-1 overflow-y-auto px-3 py-4 sm:px-5">
+        <div className="game-scroll flex-1 overflow-y-auto px-5 py-4">
           {tab === 'learn' ? (
             <div className="animate-slideUp space-y-4">
               <section>

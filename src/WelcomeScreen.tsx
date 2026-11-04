@@ -79,28 +79,28 @@ export default function WelcomeScreen({
 
       {/* Content */}
       <div
-        className={`relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center transition-all duration-700 ${
+        className={`relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center transition-all duration-700 ${
           mounting ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
         }`}
       >
-        <div className="mb-5 flex items-center gap-2 rounded-full border border-gold-500/40 bg-white/5 px-4 py-1.5 text-xs font-semibold text-gold-400 backdrop-blur sm:mb-6 sm:text-sm">
+        <div className="mb-6 flex items-center gap-2 rounded-full border border-gold-500/40 bg-white/5 px-4 py-1.5 text-sm font-semibold text-gold-400 backdrop-blur">
           <Sparkles className="h-4 w-4" />
           Aventura Matemática
         </div>
 
-        <h1 className="font-display text-5xl font-extrabold tracking-tight title-glow sm:text-8xl md:text-9xl">
+        <h1 className="font-display text-7xl font-extrabold tracking-tight title-glow sm:text-8xl md:text-9xl">
           ÁLJEBRA
         </h1>
 
-        <p className="mt-5 max-w-xl text-base leading-relaxed text-sky-100/80 sm:mt-6 sm:text-lg">
+        <p className="mt-6 max-w-xl text-lg leading-relaxed text-sky-100/80">
           Explora un mundo de zonas ocultas, descubre los secretos del álgebra y
           aprende jugando con actividades interactivas.
         </p>
 
-        <div className="mt-8 flex flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:gap-4">
+        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
           <button
             onClick={onStart}
-            className="group relative flex items-center gap-3 rounded-2xl bg-gradient-to-r from-gold-400 to-gold-600 px-7 py-3.5 text-base font-bold text-sky-950 shadow-xl shadow-gold-600/30 transition-transform hover:scale-105 active:scale-95 sm:px-8 sm:py-4 sm:text-lg"
+            className="group relative flex items-center gap-3 rounded-2xl bg-gradient-to-r from-gold-400 to-gold-600 px-8 py-4 text-lg font-bold text-sky-950 shadow-xl shadow-gold-600/30 transition-transform hover:scale-105 active:scale-95"
           >
             <Play className="h-5 w-5 fill-sky-950" />
             {hasProgress ? 'Continuar aventura' : 'Comenzar a explorar'}
@@ -110,7 +110,7 @@ export default function WelcomeScreen({
           {hasProgress && (
             <button
               onClick={onReset}
-              className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-5 py-3 font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10 sm:py-3.5"
+              className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-5 py-3.5 font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
             >
               <RotateCcw className="h-4 w-4" />
               Reiniciar progreso
@@ -119,13 +119,13 @@ export default function WelcomeScreen({
         </div>
 
         {hasProgress && (
-          <div className="mt-6 flex items-center gap-2 rounded-full bg-white/5 px-5 py-2 text-sm font-semibold text-sky-100/70 backdrop-blur sm:mt-8">
+          <div className="mt-8 flex items-center gap-2 rounded-full bg-white/5 px-5 py-2 text-sm font-semibold text-sky-100/70 backdrop-blur">
             <Compass className="h-4 w-4 text-gold-400" />
             {solvedCount} de {totalZones} zonas dominadas
           </div>
         )}
 
-        <p className="mt-8 text-xs text-sky-100/40 sm:mt-12">
+        <p className="mt-12 text-xs text-sky-100/40">
           Tu progreso se guarda automáticamente en este navegador.
         </p>
       </div>
