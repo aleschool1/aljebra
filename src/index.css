@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', system-ui, sans-serif;
+  background: #0a1838;
+  color: #f5ecd3;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: 'Baloo 2', system-ui, sans-serif;
+}
+
+/* Custom scrollbar for the game panels */
+.game-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.game-scroll::-webkit-scrollbar-track {
+  background: rgba(10, 24, 56, 0.4);
+  border-radius: 10px;
+}
+.game-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #e9a728, #c9851a);
+  border-radius: 10px;
+}
+
+.title-glow {
+  background: linear-gradient(
+    90deg,
+    #f5c451 0%,
+    #fff4d6 25%,
+    #f5c451 50%,
+    #fff4d6 75%,
+    #f5c451 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+.zone-node {
+  cursor: pointer;
+}
+.zone-node:hover .zone-node-body {
+  filter: url(#glow) brightness(1.08);
+}
+.zone-node:active .zone-node-body {
+  opacity: 0.92;
+}
+
+.cloud {
+  filter: blur(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
